@@ -186,29 +186,29 @@ function WorldTime() {
     return (
       <div
         onClick={() => clickable && setSelected(c.name)}
-        className={`rounded-xl border-2 p-3 flex flex-col gap-1.5 transition-all duration-300 ${clickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''}`}
+        className={`rounded-xl border-2 flex flex-col transition-all duration-300 ${isKey ? 'p-5 gap-2' : 'p-3 gap-1.5'} ${clickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''}`}
         style={isKey ? {
           background: biz ? 'linear-gradient(135deg, #fefce8, #fef9c3)' : '#fff',
           borderColor: biz ? '#f59e0b' : '#fbbf24',
-          boxShadow: '0 2px 8px rgba(245,158,11,0.15)',
+          boxShadow: '0 4px 16px rgba(245,158,11,0.18)',
         } : {
           background: '#fff',
           borderColor: biz ? 'rgba(16,185,129,0.3)' : 'rgba(229,231,235,1)',
         }}
       >
         <div className="flex items-center justify-between">
-          <span className={isKey ? 'text-lg' : 'text-base'}>{c.flag}</span>
+          <span className={isKey ? 'text-3xl' : 'text-base'}>{c.flag}</span>
           <div className="flex items-center gap-1">
             {clickable && <span className="text-[9px] text-gray-400">🌐</span>}
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${biz ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+            <span className={`font-bold px-1.5 py-0.5 rounded-full ${isKey ? 'text-[10px]' : 'text-[9px]'} ${biz ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
               {biz ? '● 업무중' : '● 업무외'}
             </span>
           </div>
         </div>
-        <p className={`font-black text-gray-900 ${isKey ? 'text-sm' : 'text-xs'}`}>{c.name}</p>
-        <p className={`font-black tabular-nums text-gray-900 ${isKey ? 'text-2xl' : 'text-lg'}`}>{timeStr(local)}</p>
-        <p className="text-[10px] text-gray-400">{dateStr(local)}</p>
-        <p className={`text-[10px] font-medium ${isKey ? 'text-amber-600' : 'text-indigo-500'}`}>{diff}</p>
+        <p className={`font-black text-gray-900 ${isKey ? 'text-base' : 'text-xs'}`}>{c.name}</p>
+        <p className={`font-black tabular-nums text-gray-900 ${isKey ? 'text-3xl' : 'text-lg'}`}>{timeStr(local)}</p>
+        <p className={`text-gray-400 ${isKey ? 'text-[11px]' : 'text-[10px]'}`}>{dateStr(local)}</p>
+        <p className={`font-medium ${isKey ? 'text-[11px] text-amber-600' : 'text-[10px] text-indigo-500'}`}>{diff}</p>
       </div>
     )
   }
