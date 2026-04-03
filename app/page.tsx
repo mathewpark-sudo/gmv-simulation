@@ -125,31 +125,61 @@ function WorldTime() {
         })}
       </div>
 
-      {/* 전체 국가 */}
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">전체 국가</p>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        {COUNTRIES.filter(c => !KEY_COUNTRIES.has(c.name)).map((c) => {
-          const local = getLocalTime(c.offset, now)
-          const biz = isBusinessHour(local)
-          const diff = kstDiff(c.offset)
-          return (
-            <div key={c.name}
-              className="bg-white rounded-xl border p-3 flex flex-col gap-1.5"
-              style={{ borderColor: biz ? 'rgba(16,185,129,0.3)' : 'rgba(229,231,235,1)' }}>
-              <div className="flex items-center justify-between">
-                <span className="text-base">{c.flag}</span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${biz ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
-                  {biz ? '● 업무중' : '● 업무외'}
-                </span>
-              </div>
-              <p className="text-xs font-bold text-gray-800">{c.name}</p>
-              <p className="text-lg font-black tabular-nums text-gray-900">{timeStr(local)}</p>
-              <p className="text-[10px] text-gray-400">{dateStr(local)}</p>
-              <p className="text-[10px] font-medium text-indigo-500">{diff}</p>
+      {/* 전체 국가 — 업무중/업무외 자동 분류 */}
+      {(() => {
+        const others = COUNTRIES.filter(c => !KEY_COUNTRIES.has(c.name)).map(c => ({
+          ...c,
+          local: getLocalTime(c.offset, now),
+          biz: isBusinessHour(getLocalTime(c.offset, now)),
+          diff: kstDiff(c.offset),
+        }))
+        const bizList = others.filter(c => c.biz)
+        const offList = others.filter(c => !c.biz)
+
+        const CountryCard = ({ c }: { c: typeof others[0] }) => (
+          <div key={c.name}
+            className="bg-white rounded-xl border p-3 flex flex-col gap-1.5 transition-all duration-500"
+            style={{ borderColor: c.biz ? 'rgba(16,185,129,0.3)' : 'rgba(229,231,235,1)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-base">{c.flag}</span>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${c.biz ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+                {c.biz ? '● 업무중' : '● 업무외'}
+              </span>
             </div>
-          )
-        })}
-      </div>
+            <p className="text-xs font-bold text-gray-800">{c.name}</p>
+            <p className="text-lg font-black tabular-nums text-gray-900">{timeStr(c.local)}</p>
+            <p className="text-[10px] text-gray-400">{dateStr(c.local)}</p>
+            <p className="text-[10px] font-medium text-indigo-500">{c.diff}</p>
+          </div>
+        )
+
+        return (
+          <>
+            {bizList.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">업무중 ({bizList.length})</p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {bizList.map(c => <CountryCard key={c.name} c={c} />)}
+                </div>
+              </div>
+            )}
+            {offList.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">업무외 ({offList.length})</p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 opacity-60">
+                  {offList.map(c => <CountryCard key={c.name} c={c} />)}
+                </div>
+              </div>
+            )}
+          </>
+        )
+      })()}
     </div>
   )
 }
