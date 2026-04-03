@@ -8,6 +8,83 @@ function fmt(n: number): string {
   return n.toLocaleString()
 }
 
+// ─── 도시별 시간 데이터 (다중 시간대 or 주요 대도시) ─────────────────────────────
+const CITY_DATA: Record<string, { city: string; label?: string; offset: number }[]> = {
+  '중국': [
+    { city: '베이징', label: '수도', offset: 8 },
+    { city: '상하이', offset: 8 },
+    { city: '충칭', offset: 8 },
+    { city: '광저우', offset: 8 },
+  ],
+  '미국': [
+    { city: '뉴욕',        label: '동부 ET', offset: -4 },
+    { city: '시카고',      label: '중부 CT', offset: -5 },
+    { city: '덴버',        label: '산악 MT', offset: -6 },
+    { city: '로스앤젤레스', label: '서부 PT', offset: -7 },
+    { city: '호놀룰루',    label: '하와이',  offset: -10 },
+  ],
+  '러시아': [
+    { city: '모스크바',       label: '수도',   offset: 3  },
+    { city: '예카테린부르크', label: 'UTC+5', offset: 5  },
+    { city: '노보시비르스크', label: 'UTC+7', offset: 7  },
+    { city: '이르쿠츠크',    label: 'UTC+8', offset: 8  },
+    { city: '블라디보스토크', label: 'UTC+10', offset: 10 },
+  ],
+  '캐나다': [
+    { city: '토론토',   label: '동부 ET', offset: -4 },
+    { city: '위니펙',   label: '중부 CT', offset: -5 },
+    { city: '캘거리',   label: '산악 MT', offset: -6 },
+    { city: '밴쿠버',   label: '서부 PT', offset: -7 },
+  ],
+  '인도네시아': [
+    { city: '자카르타', label: '수도 WIB', offset: 7 },
+    { city: '발리',     label: 'WITA',    offset: 8 },
+    { city: '마카사르', label: 'WITA',    offset: 8 },
+    { city: '자야푸라', label: 'WIT',     offset: 9 },
+  ],
+  '멕시코': [
+    { city: '멕시코시티', label: '수도 CST', offset: -6 },
+    { city: '칸쿤',       label: 'EST',     offset: -5 },
+    { city: '치와와',     label: 'MST',     offset: -7 },
+    { city: '티후아나',   label: 'PST',     offset: -8 },
+  ],
+  '인도': [
+    { city: '뉴델리',   label: '수도', offset: 5.5 },
+    { city: '뭄바이',   offset: 5.5 },
+    { city: '콜카타',   offset: 5.5 },
+    { city: '벵갈루루', offset: 5.5 },
+  ],
+  '카자흐스탄': [
+    { city: '아스타나', label: '수도', offset: 5 },
+    { city: '알마티',   offset: 5 },
+    { city: '악타우',   label: '서부', offset: 5 },
+  ],
+  '몽골': [
+    { city: '울란바토르', label: '수도', offset: 8 },
+    { city: '호브드',     label: '서부', offset: 7 },
+    { city: '달란자드가드', label: '남부', offset: 8 },
+  ],
+  '말레이시아': [
+    { city: '쿠알라룸푸르', label: '수도', offset: 8 },
+    { city: '코타키나발루', label: '사바', offset: 8 },
+    { city: '쿠칭',         label: '사라왁', offset: 8 },
+  ],
+  '키르기즈': [
+    { city: '비슈케크', label: '수도', offset: 6 },
+    { city: '오시',     label: '남부', offset: 6 },
+  ],
+  '우즈베키스탄': [
+    { city: '타슈켄트', label: '수도', offset: 5 },
+    { city: '사마르칸트', offset: 5 },
+    { city: '부하라',     offset: 5 },
+  ],
+  '파키스탄': [
+    { city: '이슬라마바드', label: '수도', offset: 5 },
+    { city: '카라치',       offset: 5 },
+    { city: '라호르',       offset: 5 },
+  ],
+}
+
 // ─── 세계시간 데이터 ───────────────────────────────────────────────────────────
 const KEY_COUNTRIES = new Set(['중국', '베트남', '우즈베키스탄', '몽골', '일본'])
 
@@ -66,9 +143,18 @@ function dateStr(d: Date) {
   return `${d.getMonth() + 1}/${d.getDate()}(${['일','월','화','수','목','금','토'][d.getDay()]})`
 }
 
+// 시간대가 다른 도시가 있는 나라만 팝업 활성화
+function hasMultiTimezone(name: string) {
+  const cities = CITY_DATA[name]
+  if (!cities || cities.length < 2) return false
+  return new Set(cities.map(c => c.offset)).size > 1
+}
+
 // ─── 세계시간 탭 ───────────────────────────────────────────────────────────────
 function WorldTime() {
   const [now, setNow] = useState(new Date())
+  const [selected, setSelected] = useState<string | null>(null)
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
@@ -81,105 +167,158 @@ function WorldTime() {
     return diff > 0 ? `+${diff}시간` : `${diff}시간`
   }
 
+  // 팝업용 선택 국가 정보
+  const selectedCountry = selected ? COUNTRIES.find(c => c.name === selected) : null
+  const selectedCities = selected ? (CITY_DATA[selected] ?? []) : []
+
+  // 카드 컴포넌트
+  const CountryCard = ({
+    c, isKey = false,
+  }: {
+    c: { name: string; offset: number; flag: string };
+    isKey?: boolean;
+  }) => {
+    const local = getLocalTime(c.offset, now)
+    const biz = isBusinessHour(local)
+    const diff = kstDiff(c.offset)
+    const clickable = hasMultiTimezone(c.name)
+
+    return (
+      <div
+        onClick={() => clickable && setSelected(c.name)}
+        className={`rounded-xl border-2 p-3 flex flex-col gap-1.5 transition-all duration-300 ${clickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''}`}
+        style={isKey ? {
+          background: biz ? 'linear-gradient(135deg, #fefce8, #fef9c3)' : '#fff',
+          borderColor: biz ? '#f59e0b' : '#fbbf24',
+          boxShadow: '0 2px 8px rgba(245,158,11,0.15)',
+        } : {
+          background: '#fff',
+          borderColor: biz ? 'rgba(16,185,129,0.3)' : 'rgba(229,231,235,1)',
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <span className={isKey ? 'text-lg' : 'text-base'}>{c.flag}</span>
+          <div className="flex items-center gap-1">
+            {clickable && <span className="text-[9px] text-gray-400">🌐</span>}
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${biz ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+              {biz ? '● 업무중' : '● 업무외'}
+            </span>
+          </div>
+        </div>
+        <p className={`font-black text-gray-900 ${isKey ? 'text-sm' : 'text-xs'}`}>{c.name}</p>
+        <p className={`font-black tabular-nums text-gray-900 ${isKey ? 'text-2xl' : 'text-lg'}`}>{timeStr(local)}</p>
+        <p className="text-[10px] text-gray-400">{dateStr(local)}</p>
+        <p className={`text-[10px] font-medium ${isKey ? 'text-amber-600' : 'text-indigo-500'}`}>{diff}</p>
+      </div>
+    )
+  }
+
+  const others = COUNTRIES.filter(c => !KEY_COUNTRIES.has(c.name))
+  const bizList = others.filter(c => isBusinessHour(getLocalTime(c.offset, now)))
+  const offList  = others.filter(c => !isBusinessHour(getLocalTime(c.offset, now)))
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-6">
-      {/* 한국 현재시간 */}
+
+      {/* 한국 현재시간 배너 */}
       <div className="rounded-2xl p-6 mb-6 text-white"
         style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%)' }}>
         <p className="text-xs font-semibold tracking-widest text-blue-300 uppercase mb-1">기준 시각</p>
-        <div className="flex items-end gap-4">
-          <div>
-            <p className="text-4xl font-black">{timeStr(kstNow)}</p>
-            <p className="text-blue-200 text-sm mt-1">🇰🇷 한국 (KST) · {dateStr(kstNow)}</p>
-          </div>
-        </div>
+        <p className="text-4xl font-black">{timeStr(kstNow)}</p>
+        <p className="text-blue-200 text-sm mt-1">🇰🇷 한국 (KST) · {dateStr(kstNow)}</p>
       </div>
 
       {/* 주력 국가 */}
       <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2">⭐ 주력 국가</p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-        {COUNTRIES.filter(c => KEY_COUNTRIES.has(c.name)).map((c) => {
-          const local = getLocalTime(c.offset, now)
-          const biz = isBusinessHour(local)
-          const diff = kstDiff(c.offset)
-          return (
-            <div key={c.name}
-              className="rounded-xl border-2 p-3 flex flex-col gap-1.5"
-              style={{
-                background: biz ? 'linear-gradient(135deg, #fefce8, #fef9c3)' : '#fff',
-                borderColor: biz ? '#f59e0b' : '#fbbf24',
-                boxShadow: '0 2px 8px rgba(245,158,11,0.15)',
-              }}>
-              <div className="flex items-center justify-between">
-                <span className="text-lg">{c.flag}</span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${biz ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
-                  {biz ? '● 업무중' : '● 업무외'}
-                </span>
-              </div>
-              <p className="text-sm font-black text-gray-900">{c.name}</p>
-              <p className="text-2xl font-black tabular-nums text-gray-900">{timeStr(local)}</p>
-              <p className="text-[10px] text-gray-500">{dateStr(local)}</p>
-              <p className="text-[10px] font-semibold text-amber-600">{diff}</p>
-            </div>
-          )
-        })}
+        {COUNTRIES.filter(c => KEY_COUNTRIES.has(c.name)).map(c => (
+          <CountryCard key={c.name} c={c} isKey />
+        ))}
       </div>
 
       {/* 전체 국가 — 업무중/업무외 자동 분류 */}
-      {(() => {
-        const others = COUNTRIES.filter(c => !KEY_COUNTRIES.has(c.name)).map(c => ({
-          ...c,
-          local: getLocalTime(c.offset, now),
-          biz: isBusinessHour(getLocalTime(c.offset, now)),
-          diff: kstDiff(c.offset),
-        }))
-        const bizList = others.filter(c => c.biz)
-        const offList = others.filter(c => !c.biz)
-
-        const CountryCard = ({ c }: { c: typeof others[0] }) => (
-          <div key={c.name}
-            className="bg-white rounded-xl border p-3 flex flex-col gap-1.5 transition-all duration-500"
-            style={{ borderColor: c.biz ? 'rgba(16,185,129,0.3)' : 'rgba(229,231,235,1)' }}>
-            <div className="flex items-center justify-between">
-              <span className="text-base">{c.flag}</span>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${c.biz ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
-                {c.biz ? '● 업무중' : '● 업무외'}
-              </span>
-            </div>
-            <p className="text-xs font-bold text-gray-800">{c.name}</p>
-            <p className="text-lg font-black tabular-nums text-gray-900">{timeStr(c.local)}</p>
-            <p className="text-[10px] text-gray-400">{dateStr(c.local)}</p>
-            <p className="text-[10px] font-medium text-indigo-500">{c.diff}</p>
+      {bizList.length > 0 && (
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">업무중 ({bizList.length})</p>
           </div>
-        )
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {bizList.map(c => <CountryCard key={c.name} c={c} />)}
+          </div>
+        </div>
+      )}
+      {offList.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">업무외 ({offList.length})</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 opacity-60">
+            {offList.map(c => <CountryCard key={c.name} c={c} />)}
+          </div>
+        </div>
+      )}
 
-        return (
-          <>
-            {bizList.length > 0 && (
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">업무중 ({bizList.length})</p>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {bizList.map(c => <CountryCard key={c.name} c={c} />)}
-                </div>
-              </div>
-            )}
-            {offList.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">업무외 ({offList.length})</p>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 opacity-60">
-                  {offList.map(c => <CountryCard key={c.name} c={c} />)}
+      {/* 도시 팝업 모달 */}
+      {selected && selectedCountry && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={() => setSelected(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{selectedCountry.flag}</span>
+                <div>
+                  <p className="font-black text-gray-900 text-lg">{selectedCountry.name}</p>
+                  <p className="text-[10px] text-gray-400">도시별 현재 시각</p>
                 </div>
               </div>
-            )}
-          </>
-        )
-      })()}
+              <button
+                onClick={() => setSelected(null)}
+                className="text-gray-400 hover:text-gray-700 text-xl font-bold w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100"
+              >×</button>
+            </div>
+
+            {/* 도시 목록 */}
+            <div className="space-y-2">
+              {selectedCities.map((city, i) => {
+                const cityTime = getLocalTime(city.offset, now)
+                const cityBiz  = isBusinessHour(cityTime)
+                const isFirst  = i === 0
+                return (
+                  <div key={city.city}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl ${isFirst ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-50'}`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-bold text-gray-800">{city.city}</p>
+                        {city.label && (
+                          <span className="text-[9px] text-gray-400 bg-gray-200 px-1 rounded">{city.label}</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{dateStr(cityTime)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-black tabular-nums text-gray-900">{timeStr(cityTime)}</p>
+                      <span className={`text-[9px] font-bold ${cityBiz ? 'text-emerald-600' : 'text-gray-400'}`}>
+                        {cityBiz ? '● 업무중' : '● 업무외'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="text-[10px] text-gray-300 text-center mt-4">화면 밖을 클릭하면 닫힙니다</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
