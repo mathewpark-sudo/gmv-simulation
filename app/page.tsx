@@ -9,37 +9,39 @@ function fmt(n: number): string {
 }
 
 // ─── 세계시간 데이터 ───────────────────────────────────────────────────────────
+const KEY_COUNTRIES = new Set(['중국', '베트남', '우즈베키스탄', '몽골', '일본'])
+
 const COUNTRIES = [
-  { name: '일본',         offset: 9,    flag: '🇯🇵' },
   { name: '중국',         offset: 8,    flag: '🇨🇳' },
-  { name: '홍콩',         offset: 8,    flag: '🇭🇰' },
-  { name: '대만',         offset: 8,    flag: '🇹🇼' },
-  { name: '말레이시아',   offset: 8,    flag: '🇲🇾' },
-  { name: '필리핀',       offset: 8,    flag: '🇵🇭' },
-  { name: '몽골',         offset: 8,    flag: '🇲🇳' },
   { name: '베트남',       offset: 7,    flag: '🇻🇳' },
-  { name: '태국',         offset: 7,    flag: '🇹🇭' },
-  { name: '인도네시아',   offset: 7,    flag: '🇮🇩' },
-  { name: '캄보디아',     offset: 7,    flag: '🇰🇭' },
-  { name: '미얀마',       offset: 6.5,  flag: '🇲🇲' },
-  { name: '방글라데시',   offset: 6,    flag: '🇧🇩' },
-  { name: '키르기즈',     offset: 6,    flag: '🇰🇬' },
-  { name: '카자흐스탄',   offset: 5,    flag: '🇰🇿' },
-  { name: '파키스탄',     offset: 5,    flag: '🇵🇰' },
   { name: '우즈베키스탄', offset: 5,    flag: '🇺🇿' },
-  { name: '인도',         offset: 5.5,  flag: '🇮🇳' },
-  { name: '스리랑카',     offset: 5.5,  flag: '🇱🇰' },
+  { name: '몽골',         offset: 8,    flag: '🇲🇳' },
   { name: '네팔',         offset: 5.75, flag: '🇳🇵' },
-  { name: '러시아',       offset: 3,    flag: '🇷🇺' },
-  { name: '튀르키예',     offset: 3,    flag: '🇹🇷' },
-  { name: '독일',         offset: 1,    flag: '🇩🇪' },
-  { name: '프랑스',       offset: 1,    flag: '🇫🇷' },
-  { name: '이탈리아',     offset: 1,    flag: '🇮🇹' },
-  { name: '스페인',       offset: 1,    flag: '🇪🇸' },
-  { name: '영국',         offset: 0,    flag: '🇬🇧' },
+  { name: '미얀마',       offset: 6.5,  flag: '🇲🇲' },
+  { name: '일본',         offset: 9,    flag: '🇯🇵' },
   { name: '미국',         offset: -5,   flag: '🇺🇸' },
+  { name: '방글라데시',   offset: 6,    flag: '🇧🇩' },
+  { name: '러시아',       offset: 3,    flag: '🇷🇺' },
+  { name: '인도네시아',   offset: 7,    flag: '🇮🇩' },
+  { name: '프랑스',       offset: 1,    flag: '🇫🇷' },
+  { name: '대만',         offset: 8,    flag: '🇹🇼' },
+  { name: '키르기즈',     offset: 6,    flag: '🇰🇬' },
+  { name: '파키스탄',     offset: 5,    flag: '🇵🇰' },
+  { name: '카자흐스탄',   offset: 5,    flag: '🇰🇿' },
+  { name: '인도',         offset: 5.5,  flag: '🇮🇳' },
+  { name: '독일',         offset: 1,    flag: '🇩🇪' },
+  { name: '말레이시아',   offset: 8,    flag: '🇲🇾' },
+  { name: '스리랑카',     offset: 5.5,  flag: '🇱🇰' },
+  { name: '태국',         offset: 7,    flag: '🇹🇭' },
+  { name: '필리핀',       offset: 8,    flag: '🇵🇭' },
+  { name: '튀르키예',     offset: 3,    flag: '🇹🇷' },
+  { name: '홍콩',         offset: 8,    flag: '🇭🇰' },
   { name: '캐나다',       offset: -5,   flag: '🇨🇦' },
+  { name: '이탈리아',     offset: 1,    flag: '🇮🇹' },
+  { name: '캄보디아',     offset: 7,    flag: '🇰🇭' },
+  { name: '영국',         offset: 0,    flag: '🇬🇧' },
   { name: '멕시코',       offset: -6,   flag: '🇲🇽' },
+  { name: '스페인',       offset: 1,    flag: '🇪🇸' },
 ]
 
 function getLocalTime(utcOffset: number, now: Date) {
@@ -93,9 +95,40 @@ function WorldTime() {
         </div>
       </div>
 
-      {/* 국가 그리드 */}
+      {/* 주력 국가 */}
+      <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2">⭐ 주력 국가</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        {COUNTRIES.filter(c => KEY_COUNTRIES.has(c.name)).map((c) => {
+          const local = getLocalTime(c.offset, now)
+          const biz = isBusinessHour(local)
+          const diff = kstDiff(c.offset)
+          return (
+            <div key={c.name}
+              className="rounded-xl border-2 p-3 flex flex-col gap-1.5"
+              style={{
+                background: biz ? 'linear-gradient(135deg, #fefce8, #fef9c3)' : '#fff',
+                borderColor: biz ? '#f59e0b' : '#fbbf24',
+                boxShadow: '0 2px 8px rgba(245,158,11,0.15)',
+              }}>
+              <div className="flex items-center justify-between">
+                <span className="text-lg">{c.flag}</span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${biz ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+                  {biz ? '● 업무중' : '● 업무외'}
+                </span>
+              </div>
+              <p className="text-sm font-black text-gray-900">{c.name}</p>
+              <p className="text-2xl font-black tabular-nums text-gray-900">{timeStr(local)}</p>
+              <p className="text-[10px] text-gray-500">{dateStr(local)}</p>
+              <p className="text-[10px] font-semibold text-amber-600">{diff}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* 전체 국가 */}
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">전체 국가</p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        {COUNTRIES.map((c) => {
+        {COUNTRIES.filter(c => !KEY_COUNTRIES.has(c.name)).map((c) => {
           const local = getLocalTime(c.offset, now)
           const biz = isBusinessHour(local)
           const diff = kstDiff(c.offset)
