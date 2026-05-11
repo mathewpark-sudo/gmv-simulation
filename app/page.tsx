@@ -223,9 +223,9 @@ function WorldTime() {
       {/* 한국 현재시간 배너 */}
       <div className="rounded-2xl p-6 mb-6 text-white"
         style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%)' }}>
-        <p className="text-xs font-semibold tracking-widest text-blue-300 uppercase mb-1">기준 시각</p>
-        <p className="text-4xl font-black">{timeStr(kstNow)}</p>
-        <p className="text-blue-200 text-sm mt-1">🇰🇷 한국 (KST) · {dateStr(kstNow)}</p>
+        <p className="text-sm font-bold tracking-widest uppercase mb-2" style={{ color: '#7dd3fc' }}>🕐 기준 시각</p>
+        <p className="text-6xl font-black" style={{ color: '#ffffff', textShadow: '0 0 20px rgba(125,211,252,0.6)' }}>{timeStr(kstNow)}</p>
+        <p className="text-blue-200 text-sm mt-2">🇰🇷 한국 (KST) · {dateStr(kstNow)}</p>
       </div>
 
       {/* 주력 국가 */}
